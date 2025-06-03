@@ -28,6 +28,7 @@ TOKEN_TYPES = [
     ('IDENTIFIER', r'[A-Za-z_][A-Za-z0-9_]*'),
     ('NEWLINE', r'\n'),
     ('SKIP', r'[ \t]+'),
+    ('COMMENT', r'BTW[^\n]*'),
 ]
 
 
@@ -48,14 +49,6 @@ class Lexer:
         self.line = 1
 
     def tokenize(self):
-        lines = self.source.splitlines()
-        cleaned_lines = []
-        for line in lines:
-            if 'BTW' in line:
-                line = line.split('BTW')[0]
-            cleaned_lines.append(line)
-        self.source = '\n'.join(cleaned_lines)
-
         pos = 0
         while pos < len(self.source):
             match = None
@@ -66,7 +59,7 @@ class Lexer:
                     value = match.group(0)
                     if token_type == 'NEWLINE':
                         self.line += 1
-                    elif token_type == 'SKIP':
+                    elif token_type == 'SKIP' or token_type == 'COMMENT':
                         pass
                     else:
                         token = Token(token_type, value, self.line)
