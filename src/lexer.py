@@ -25,11 +25,13 @@ TOKEN_TYPES = [
     ('OIC', r'OIC'),
     ('NUMBR', r'-?\d+'),
     ('STRING', r'"[^"]*"'),
+    ('COMMENT', r'BTW[^\n]*'), 
     ('IDENTIFIER', r'[A-Za-z_][A-Za-z0-9_]*'),
     ('NEWLINE', r'\n'),
     ('SKIP', r'[ \t]+'),
-    ('COMMENT', r'BTW[^\n]*'),
 ]
+
+COMPILED_TOKEN_TYPES = [(name, re.compile(pattern)) for name, pattern in TOKEN_TYPES]
 
 
 class Token:
@@ -52,8 +54,7 @@ class Lexer:
         pos = 0
         while pos < len(self.source):
             match = None
-            for token_type, pattern in TOKEN_TYPES:
-                regex = re.compile(pattern)
+            for token_type, regex in COMPILED_TOKEN_TYPES:
                 match = regex.match(self.source, pos)
                 if match:
                     value = match.group(0)
