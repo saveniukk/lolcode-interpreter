@@ -1,6 +1,12 @@
 class ASTNode:
-    pass
+    def __repr__(self):
+        attrs = ', '.join(f"{key}={repr(value)}" for key, value in self.__dict__.items() if not key.startswith('_'))
+        return f"{self.__class__.__name__}({attrs})"
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.__dict__ == other.__dict__
 
 class Program(ASTNode):
     def __init__(self, statements):
