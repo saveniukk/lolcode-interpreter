@@ -1,7 +1,7 @@
 import sys
-from .lexer import Lexer
-from .parser import Parser
-from .interpreter import Interpreter
+from src.lexer import Lexer
+from src.parser import Parser
+from src.interpreter import Interpreter
 
 
 def main():
@@ -38,3 +38,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
