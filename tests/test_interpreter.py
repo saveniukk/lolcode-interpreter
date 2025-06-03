@@ -92,3 +92,4 @@ class Interpreter:
             return bool(left) != bool(right)
         else:
             raise Exception(f"Unknown operator: {operator}")
+            
