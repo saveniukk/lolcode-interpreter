@@ -123,6 +123,9 @@ class Interpreter:
         start_val = self.evaluate(node.start_expr)
         end_val = self.evaluate(node.end_expr)
         
+        if not isinstance(start_val, int) or not isinstance(end_val, int):
+            raise RuntimeError("Loop bounds must be integers")
+        
         for i in range(start_val, end_val + 1):
             self.env.set(node.variable_name, i)
             self._execute_statements(node.body)
