@@ -2,8 +2,10 @@ from src.ast_nodes import *
 
 
 class Environment:
-    def __init__(self):
+    def __init__(self, parent=None):
         self.variables = {}
+        self.functions = {}
+        self.parent = parent
 
     def set(self, name, value):
         self.variables[name] = value
@@ -11,8 +13,25 @@ class Environment:
     def get(self, name):
         if name in self.variables:
             return self.variables[name]
-        raise NameError(f"Variable '{name}' not defined")
+        elif self.parent:
+            return self.parent.get(name)
+        else:
+            raise NameError(f"Variable '{name}' not defined")
 
+    def define_function(self, name, parameters, body):
+        self.functions[name] = (parameters, body)
+
+    def get_function(self, name):
+        if name in self.functions:
+            return self.functions[name]
+        elif self.parent:
+            return self.parent.get_function(name)
+        else:
+            raise NameError(f"Function '{name}' not defined")
+
+class ReturnException(Exception):
+    def __init__(self, value):
+        self.value = value
 
 class Interpreter:
     def __init__(self):
@@ -48,8 +67,15 @@ class Interpreter:
                 for stmt in node.body:
                     self.interpret(stmt)
 
+        elif isinstance(node, FunctionDefinition):
+            self.env.define_function(node.name, node.parameters, node.body)
+
+        elif isinstance(node, ReturnStatement):
+            value = self.evaluate(node.expression)
+            raise ReturnException(value)
+
         elif isinstance(node, NoOp):
-            pass  # Do nothing
+            pass
 
         else:
             raise Exception(f"Unsupported node type: {type(node).__name__}")
@@ -65,6 +91,28 @@ class Interpreter:
             left = self.evaluate(expr.left)
             right = self.evaluate(expr.right)
             return self._apply_operator(expr.operator, left, right)
+
+        elif isinstance(expr, FunctionCall):
+            func = self.env.get_function(expr.name)
+            if func is None:
+                raise NameError(f"Function '{expr.name}' not defined")
+            parameters, body = func
+            if len(parameters) != len(expr.arguments):
+                raise Exception(f"Function '{expr.name}' expects {len(parameters)} arguments, got {len(expr.arguments)}")
+            arg_values = [self.evaluate(arg) for arg in expr.arguments]
+            func_env = Environment(parent=self.env)
+            for param, arg_value in zip(parameters, arg_values):
+                func_env.set(param, arg_value)
+            original_env = self.env
+            self.env = func_env
+            try:
+                for stmt in body:
+                    self.interpret(stmt)
+            except ReturnException as e:
+                return e.value
+            finally:
+                self.env = original_env
+            return None 
 
         else:
             raise Exception(f"Unsupported expression: {type(expr).__name__}")
@@ -92,3 +140,4 @@ class Interpreter:
             return bool(left) != bool(right)
         else:
             raise Exception(f"Unknown operator: {operator}")
+        

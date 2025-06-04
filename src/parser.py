@@ -1,6 +1,5 @@
 from src.ast_nodes import *
 
-
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -46,6 +45,15 @@ class Parser:
             return self.parse_assignment()
         elif token.type == "IF":
             return self.parse_if()
+        elif token.type == "HOW":
+            return self.parse_function_definition()
+        elif token.type == "I":
+            return self.parse_function_call()
+        elif token.type == "FOUND":
+            return self.parse_return()
+        elif token.type == "GTFO":
+            self.match("GTFO")
+            return ReturnStatement(Literal(None))
         else:
             self.pos += 1
             return NoOp()
@@ -107,3 +115,44 @@ class Parser:
                     false_block.append(stmt)
         self.expect("OIC")
         return IfStatement(Variable("IT"), true_block, false_block or None)
+
+    def parse_function_definition(self):
+        self.expect("HOW")
+        self.expect("IZ")
+        self.expect("I")
+        name = self.expect("IDENTIFIER").value
+
+        parameters = []
+        while self.match("YR"):
+            param = self.expect("IDENTIFIER").value
+            parameters.append(param)
+            self.match("AN")
+
+        body = []
+        while self.current() and self.current().type != "IF_U_SAY_SO":
+            stmt = self.parse_statement()
+            if stmt:
+                body.append(stmt)
+
+        self.expect("IF_U_SAY_SO")
+        return FunctionDefinition(name, parameters, body)
+
+    def parse_function_call(self):
+        self.expect("I")
+        self.expect("IZ")
+        name = self.expect("IDENTIFIER").value
+
+        args = []
+        while self.match("YR"):
+            arg = self.parse_expression()
+            args.append(arg)
+            self.match("AN")
+
+        self.expect("MKAY")
+        return FunctionCall(name, args)
+
+    def parse_return(self):
+        self.expect("FOUND")
+        self.expect("YR")
+        expr = self.parse_expression()
+        return ReturnStatement(expr)

@@ -1,6 +1,5 @@
 import re
 
-
 TOKEN_TYPES = [
     ('HAI', r'HAI'),
     ('KTHXBYE', r'KTHXBYE'),
@@ -23,9 +22,21 @@ TOKEN_TYPES = [
     ('YA_RLY', r'YA RLY'),
     ('NO_WAI', r'NO WAI'),
     ('OIC', r'OIC'),
+    ('HOW_IZ_I', r'HOW IZ I'),
+    ('IF_U_SAY_SO', r'IF U SAY SO'),
+    ('FOUND_YR', r'FOUND YR'),
+    ('IM_IN_YR', r'IM IN YR'),
+    ('IM_OUTTA_YR', r'IM OUTTA YR'),
+    ('YR', r'YR'),
+    ('UPPIN', r'UPPIN'),
+    ('NERFIN', r'NERFIN'),
+    ('TIL', r'TIL'),
+    ('WILE', r'WILE'),
     ('NUMBR', r'-?\d+'),
     ('STRING', r'"[^"]*"'),
     ('COMMENT', r'BTW[^\n]*'), 
+    ('BIGGR', r'BIGGR'),
+    ('THAN', r'THAN'),
     ('IDENTIFIER', r'[A-Za-z_][A-Za-z0-9_]*'),
     ('NEWLINE', r'\n'),
     ('SKIP', r'[ \t]+'),
@@ -70,3 +81,4 @@ class Lexer:
             if not match:
                 raise SyntaxError(f'Illegal character at line {self.line}: {self.source[pos]}')
         return self.tokens
+    
