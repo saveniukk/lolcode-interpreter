@@ -3,156 +3,173 @@ from src.ast_nodes import *
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
-        self.pos = 0
+        self.position = 0
+        self.binary_operators = {
+            "SUM_OF": "SUM OF",
+            "DIFF_OF": "DIFF OF",
+            "PRODUKT_OF": "PRODUKT OF",
+            "QUOSHUNT_OF": "QUOSHUNT OF",
+            "MOD_OF": "MOD OF",
+            "BIGGR_OF": "BIGGR OF",
+            "SMALLR_OF": "SMALLR OF",
+            "BOTH_OF": "BOTH OF",
+            "EITHER_OF": "EITHER OF",
+            "WON_OF": "WON OF"
+        }
 
-    def current(self):
-        return self.tokens[self.pos] if self.pos < len(self.tokens) else None
+    def current_token(self):
+        return self.tokens[self.position] if self.position < len(self.tokens) else None
 
-    def match(self, *token_types):
-        token = self.current()
+    def match_token(self, *token_types):
+        token = self.current_token()
         if token and token.type in token_types:
-            self.pos += 1
+            self.position += 1
             return token
         return None
 
-    def expect(self, token_type):
-        token = self.match(token_type)
+    def expect_token(self, token_type):
+        token = self.match_token(token_type)
         if not token:
-            current = self.current()
-            raise SyntaxError(f"Expected {token_type} at line {current.line if current else 'EOF'}")
+            current = self.current_token()
+            line_info = f"at line {current.line}" if current else "at EOF"
+            raise SyntaxError(f"Expected {token_type} {line_info}, but got {current.type if current else 'EOF'}")
         return token
 
     def parse(self):
-        self.expect("HAI")
+        self.expect_token("HAI")
         statements = []
-        while self.current() and self.current().type != "KTHXBYE":
-            stmt = self.parse_statement()
-            if stmt:
-                statements.append(stmt)
-        self.expect("KTHXBYE")
+        while self.current_token() and self.current_token().type != "KTHXBYE":
+            statement = self.parse_statement()
+            if statement:
+                statements.append(statement)
+        self.expect_token("KTHXBYE")
         return Program(statements)
 
     def parse_statement(self):
-        token = self.current()
+        token = self.current_token()
         if not token:
             return None
 
-        if token.type == "VISIBLE":
-            return self.parse_visible()
-        elif token.type == "I_HAS_A":
-            return self.parse_variable_declaration()
-        elif token.type == "IDENTIFIER":
-            return self.parse_assignment()
-        elif token.type == "IF":
-            return self.parse_if()
-        elif token.type == "HOW":
-            return self.parse_function_definition()
-        elif token.type == "I":
-            return self.parse_function_call()
-        elif token.type == "FOUND":
-            return self.parse_return()
-        elif token.type == "GTFO":
-            self.match("GTFO")
-            return ReturnStatement(Literal(None))
-        else:
-            self.pos += 1
-            return NoOp()
+        handlers = {
+            "VISIBLE": self.parse_visible,
+            "I_HAS_A": self.parse_variable_declaration,
+            "IDENTIFIER": self.parse_assignment,
+            "IF": self.parse_if,
+            "HOW": self.parse_function_definition,
+            "I": self.parse_function_call,
+            "FOUND": self.parse_return,
+            "GTFO": self.parse_gtfo_statement,
+        }
+
+        handler = handlers.get(token.type)
+        if handler:
+            return handler()
+        
+        self.position += 1
+        return NoOp()
 
     def parse_visible(self):
-        self.expect("VISIBLE")
-        expr = self.parse_expression()
-        return VisibleStatement(expr)
+        self.expect_token("VISIBLE")
+        return VisibleStatement(self.parse_expression())
 
     def parse_variable_declaration(self):
-        self.expect("I_HAS_A")
-        var_name = self.expect("IDENTIFIER").value
-        if self.match("ITZ"):
-            value_expr = self.parse_expression()
-        else:
-            value_expr = Literal(None)
-        return Assignment(var_name, value_expr)
+        self.expect_token("I_HAS_A")
+        name = self.expect_token("IDENTIFIER").value
+        value = None
+        if self.match_token("ITZ"):
+            value = self.parse_expression()
+        return Assignment(name, value if value is not None else Literal(None))
+
 
     def parse_assignment(self):
-        var_name = self.expect("IDENTIFIER").value
-        self.expect("R")
-        value_expr = self.parse_expression()
-        return Assignment(var_name, value_expr)
+        name = self.expect_token("IDENTIFIER").value
+        self.expect_token("R")
+        return Assignment(name, self.parse_expression())
 
     def parse_expression(self):
-        token = self.current()
+        token = self.current_token()
+        if not token:
+            raise SyntaxError("Unexpected end of input while parsing expression")
 
-        if token.type in ("SUM_OF", "DIFF_OF", "PRODUKT_OF", "QUOSHUNT_OF", "MOD_OF",
-                          "BIGGR_OF", "SMALLR_OF", "BOTH_OF", "EITHER_OF", "WON_OF"):
-            op_token = self.match(token.type)
-            left = self.parse_expression()
-            self.expect("AN")
-            right = self.parse_expression()
-            return BinaryOperation(op_token.type.replace("_", " "), left, right)
+        if token.type in self.binary_operators:
+            return self.parse_binary_operation()
+        
+        if token.type == "NUMBR":
+            return Literal(int(self.match_token("NUMBR").value))
+        
+        if token.type == "STRING":
+            return Literal(self.match_token("STRING").value.strip('"'))
+        
+        if token.type == "IDENTIFIER":
+            return Variable(self.match_token("IDENTIFIER").value)
+        
+        raise SyntaxError(f"Unexpected token {token.type} at line {token.line} while parsing expression")
 
-        elif token.type == "NUMBR":
-            return Literal(int(self.match("NUMBR").value))
-        elif token.type == "STRING":
-            value = self.match("STRING").value
-            return Literal(value.strip('"'))
-        elif token.type == "IDENTIFIER":
-            return Variable(self.match("IDENTIFIER").value)
-        else:
-            raise SyntaxError(f"Unexpected token {token.type} at line {token.line}")
+    def parse_binary_operation(self):
+        operator_token = self.match_token(*self.binary_operators.keys())
+        if not operator_token:
+            raise SyntaxError(f"Expected a binary operator, but got {self.current_token().type if self.current_token() else 'EOF'}")
+        
+        operator_value = self.binary_operators[operator_token.type]
+        left = self.parse_expression()
+        self.expect_token("AN")
+        right = self.parse_expression()
+        return BinaryOperation(operator_value, left, right)
 
     def parse_if(self):
-        self.expect("IF")
-        true_block = []
+        self.expect_token("IF")
+        self.expect_token("YA_RLY")
+        
+        true_block = self.parse_block_until(["NO_WAI", "OIC"])
+        
         false_block = []
-        self.expect("YA_RLY")
-        while self.current() and self.current().type not in ("NO_WAI", "OIC"):
-            stmt = self.parse_statement()
-            if stmt:
-                true_block.append(stmt)
-        if self.match("NO_WAI"):
-            while self.current() and self.current().type != "OIC":
-                stmt = self.parse_statement()
-                if stmt:
-                    false_block.append(stmt)
-        self.expect("OIC")
+        if self.match_token("NO_WAI"):
+            false_block = self.parse_block_until(["OIC"])
+        
+        self.expect_token("OIC")
         return IfStatement(Variable("IT"), true_block, false_block or None)
 
+    def parse_block_until(self, terminators):
+        statements = []
+        while self.current_token() and self.current_token().type not in terminators:
+            statement = self.parse_statement()
+            if statement:
+                statements.append(statement)
+        return statements
+
     def parse_function_definition(self):
-        self.expect("HOW")
-        self.expect("IZ")
-        self.expect("I")
-        name = self.expect("IDENTIFIER").value
-
+        self.expect_token("HOW")
+        self.expect_token("IZ")
+        self.expect_token("I")
+        name = self.expect_token("IDENTIFIER").value
+        
         parameters = []
-        while self.match("YR"):
-            param = self.expect("IDENTIFIER").value
-            parameters.append(param)
-            self.match("AN")
-
-        body = []
-        while self.current() and self.current().type != "IF_U_SAY_SO":
-            stmt = self.parse_statement()
-            if stmt:
-                body.append(stmt)
-
-        self.expect("IF_U_SAY_SO")
+        while self.match_token("YR"):
+            parameters.append(self.expect_token("IDENTIFIER").value)
+            self.match_token("AN") 
+        
+        body = self.parse_block_until(["IF_U_SAY_SO"])
+        self.expect_token("IF_U_SAY_SO")
         return FunctionDefinition(name, parameters, body)
 
     def parse_function_call(self):
-        self.expect("I")
-        self.expect("IZ")
-        name = self.expect("IDENTIFIER").value
-
-        args = []
-        while self.match("YR"):
-            arg = self.parse_expression()
-            args.append(arg)
-            self.match("AN")
-
-        self.expect("MKAY")
-        return FunctionCall(name, args)
+        self.expect_token("I")
+        self.expect_token("IZ")
+        name = self.expect_token("IDENTIFIER").value
+        
+        arguments = []
+        while self.match_token("YR"):
+            arguments.append(self.parse_expression())
+            self.match_token("AN") 
+        
+        self.expect_token("MKAY")
+        return FunctionCall(name, arguments)
 
     def parse_return(self):
-        self.expect("FOUND")
-        self.expect("YR")
-        expr = self.parse_expression()
-        return ReturnStatement(expr)
+        self.expect_token("FOUND")
+        self.expect_token("YR")
+        return ReturnStatement(self.parse_expression())
+
+    def parse_gtfo_statement(self):
+        self.expect_token("GTFO")
+        return ReturnStatement(Literal(None))
