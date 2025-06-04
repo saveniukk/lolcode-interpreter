@@ -234,3 +234,91 @@ def test_missing_oic_in_if():
 
     with pytest.raises(SyntaxError, match="Expected OIC"):
         parser.parse()
+
+def test_gtfo_statement():
+    tokens = create_tokens([
+        ("HAI", "HAI"),
+        ("GTFO", "GTFO"),
+        ("KTHXBYE", "KTHXBYE")
+    ])
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected = Program([
+        ReturnStatement(Literal(None))
+    ])
+
+    assert ast == expected
+
+def test_function_definition():
+    tokens = create_tokens([
+        ("HAI", "HAI"),
+        ("HOW", "HOW"), ("IZ", "IZ"), ("I", "I"),
+        ("IDENTIFIER", "doStuff"),
+        ("YR", "YR"), ("IDENTIFIER", "x"),
+        ("AN", "AN"), ("YR", "YR"), ("IDENTIFIER", "y"),
+        ("VISIBLE", "VISIBLE"), ("IDENTIFIER", "x"),
+        ("IF_U_SAY_SO", "IF U SAY SO"),
+        ("KTHXBYE", "KTHXBYE")
+    ])
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected = Program([
+        FunctionDefinition(
+            "doStuff",
+            ["x", "y"],
+            [VisibleStatement(Variable("x"))]
+        )
+    ])
+
+    assert ast == expected
+
+def test_function_call():
+    tokens = create_tokens([
+        ("HAI", "HAI"),
+        ("I", "I"), ("IZ", "IZ"),
+        ("IDENTIFIER", "add"),
+        ("YR", "YR"), ("NUMBR", "2"),
+        ("AN", "AN"), ("YR", "YR"), ("NUMBR", "3"),
+        ("MKAY", "MKAY"),
+        ("KTHXBYE", "KTHXBYE")
+    ])
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected = Program([
+        FunctionCall("add", [Literal(2), Literal(3)])
+    ])
+
+    assert ast == expected
+
+def test_return_statement():
+    tokens = create_tokens([
+        ("HAI", "HAI"),
+        ("FOUND", "FOUND"),
+        ("YR", "YR"),
+        ("NUMBR", "42"),
+        ("KTHXBYE", "KTHXBYE")
+    ])
+    parser = Parser(tokens)
+    ast = parser.parse()
+
+    expected = Program([
+        ReturnStatement(Literal(42))
+    ])
+
+    assert ast == expected
+
+def test_missing_if_u_say_so():
+    tokens = create_tokens([
+        ("HAI", "HAI"),
+        ("HOW", "HOW"), ("IZ", "IZ"), ("I", "I"),
+        ("IDENTIFIER", "f"),
+        ("VISIBLE", "VISIBLE"), ("STRING", '"test"'),
+        ("KTHXBYE", "KTHXBYE")
+    ])
+    parser = Parser(tokens)
+
+    with pytest.raises(SyntaxError, match="Expected IF_U_SAY_SO"):
+        parser.parse()
