@@ -1,4 +1,5 @@
-# LOLCODE Interpreter and Compiler Project
+# LOLCODE interpreter and compiler project
+
 
 ## Overview
 
@@ -52,7 +53,7 @@ Running the command above for hello_world.lol would output:
 OHAI WORLD!
 ```
 
-### Project Structure
+### Project structure
 
 ```
 lolcode-interpreter/
